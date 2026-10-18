@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+radar.db*
+app.log
+app.pid
+.pytest_cache/
+.venv/

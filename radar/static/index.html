@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>radar/vagas · vagas remotas com filtro de verdade</title>
+  <meta name="description" content="Agrega vagas remotas de APIs públicas e filtra por stack, salário e fuso horário.">
+  <meta name="theme-color" content="#0d0a1f">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230d0a1f'/><circle cx='16' cy='16' r='10' fill='none' stroke='%23bd93f9' stroke-width='2'/><circle cx='16' cy='16' r='4' fill='none' stroke='%23bd93f9' stroke-width='2'/><path d='M16 16 L24 9' stroke='%2350fa7b' stroke-width='2.5' stroke-linecap='round'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;800&display=swap">
+  <link rel="stylesheet" href="/static/style.css?v=2">
+</head>
+<body>
+  <header class="topo">
+    <a class="marca" href="/" aria-label="radar/vagas, início">
+      <span class="radar" aria-hidden="true"><i></i></span>
+      <span>radar<b>/</b>vagas</span>
+    </a>
+    <p class="status" id="status" aria-live="polite">carregando…</p>
+    <button class="btn btn--ghost" id="atualizar" type="button" title="Buscar vagas novas nas APIs" aria-label="Atualizar vagas">↻ <span class="so-desktop">atualizar</span></button>
+    <button class="btn btn--ghost so-mobile" id="abrir-filtros" type="button" aria-controls="filtros" aria-expanded="false">filtros</button>
+  </header>
+
+  <div class="layout">
+    <aside class="filtros" id="filtros" aria-label="Filtros">
+      <div class="filtros-topo so-mobile">
+        <strong>Filtros</strong>
+        <button class="btn btn--ghost" id="fechar-filtros" type="button">fechar</button>
+      </div>
+
+      <label class="campo">
+        <span class="rotulo">buscar</span>
+        <input type="search" id="q" placeholder="cargo, empresa, tecnologia…" autocomplete="off">
+      </label>
+
+      <fieldset class="grupo">
+        <legend class="rotulo">meu fuso horário</legend>
+        <select id="fuso" aria-label="Seu fuso horário"></select>
+        <div class="linha" id="linha-tolerancia">
+          <input type="range" id="tolerancia" min="0" max="6" step="1" value="3" aria-label="Tolerância de fuso em horas">
+          <output id="tolerancia-valor" for="tolerancia">±3h</output>
+        </div>
+        <label class="check"><input type="checkbox" id="sem_fuso" checked> incluir vagas sem fuso definido</label>
+      </fieldset>
+
+      <fieldset class="grupo">
+        <legend class="rotulo">salário mínimo</legend>
+        <div class="linha">
+          <input type="range" id="sal_min" min="0" max="250000" step="10000" value="0" aria-label="Salário mínimo em dólares por ano">
+        </div>
+        <output id="sal-valor" for="sal_min" class="dica">qualquer valor</output>
+        <label class="check"><input type="checkbox" id="sem_salario"> incluir vagas sem salário informado</label>
+      </fieldset>
+
+      <fieldset class="grupo">
+        <legend class="rotulo">stack <span class="dica" id="stacks-dica">(todas as marcadas)</span></legend>
+        <div class="chips" id="stacks"></div>
+        <button type="button" class="link" id="mais-stacks" hidden>ver mais</button>
+      </fieldset>
+
+      <fieldset class="grupo">
+        <legend class="rotulo">senioridade</legend>
+        <div class="chips" id="senioridade"></div>
+      </fieldset>
+
+      <fieldset class="grupo">
+        <legend class="rotulo">publicada</legend>
+        <select id="dias" aria-label="Data de publicação">
+          <option value="">qualquer data</option>
+          <option value="1">últimas 24h</option>
+          <option value="3">últimos 3 dias</option>
+          <option value="7">última semana</option>
+          <option value="30">último mês</option>
+        </select>
+      </fieldset>
+
+      <fieldset class="grupo">
+        <legend class="rotulo">fontes</legend>
+        <div id="fontes" class="fontes"></div>
+      </fieldset>
+
+      <label class="check check--forte"><input type="checkbox" id="so_tech" checked> só vagas de tecnologia</label>
+
+      <div class="acoes">
+        <button class="btn" id="salvar" type="button" title="Abre o radar sempre com estes filtros">salvar como meu filtro</button>
+        <button class="btn btn--ghost" id="limpar" type="button">limpar</button>
+      </div>
+    </aside>
+
+    <main class="resultado">
+      <div class="barra">
+        <nav class="abas" aria-label="Listas">
+          <button type="button" class="aba" data-aba="todas" aria-pressed="true">todas</button>
+          <button type="button" class="aba" data-aba="favoritas" aria-pressed="false">★ favoritas <span id="n-fav"></span></button>
+          <button type="button" class="aba" data-aba="ocultas" aria-pressed="false">ocultas <span id="n-ocu"></span></button>
+        </nav>
+        <label class="ordem">ordenar
+          <select id="ordem">
+            <option value="recentes">mais recentes</option>
+            <option value="salario">maior salário</option>
+          </select>
+        </label>
+      </div>
+      <p class="contagem" id="contagem" aria-live="polite"></p>
+      <ol class="lista" id="lista"></ol>
+      <div class="fim" id="fim"></div>
+    </main>
+  </div>
+
+  <footer class="rodape">
+    <p>Vagas de <span id="creditos"></span>. Cada vaga leva para o anúncio original.</p>
+    <p>Salários convertidos com cotação aproximada · fuso "estimado" vem do local da vaga.</p>
+    <p>Feito por <a href="https://github.com/Tocdor-creator" target="_blank" rel="noopener">Bruno Schutz</a> · <a href="https://github.com/Tocdor-creator/radar-vagas" target="_blank" rel="noopener">código</a></p>
+  </footer>
+
+  <template id="tpl-vaga">
+    <li class="vaga">
+      <div class="logo"></div>
+      <div class="corpo">
+        <div class="cabeca">
+          <h2 class="titulo"><a target="_blank" rel="noopener"></a></h2>
+          <div class="botoes">
+            <button type="button" class="ico fav" aria-pressed="false">★</button>
+            <button type="button" class="ico ocu">✕</button>
+          </div>
+        </div>
+        <p class="meta"></p>
+        <ul class="tags"></ul>
+        <div class="infos">
+          <p class="salario"></p>
+          <div class="fuso"><div class="regua" aria-hidden="true"></div><span class="fuso-txt"></span></div>
+        </div>
+        <p class="resumo"></p>
+        <p class="via"></p>
+      </div>
+    </li>
+  </template>
+
+  <script src="/static/app.js?v=3" type="module"></script>
+</body>
+</html>
